@@ -18,8 +18,8 @@ setup(
     zip_safe=True,
     maintainer='manohara',
     maintainer_email='manohara01012005@gmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='TODO: Package to control a versatile, multi-functional robot designed to adapt to various tasks.',
+    license='TODO: MIT License',
     extras_require={'test': ['pytest']},
     entry_points={
         'console_scripts': [
