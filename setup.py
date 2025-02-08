@@ -23,7 +23,7 @@ setup(
     extras_require={'test': ['pytest']},
     entry_points={
         'console_scripts': [
-            'vision_node = vortex.vision_node:main',
+            'edge_publisher = vortex.edge_publisher:main',
             'motion_node = vortex.motion_controller:main',
         ],
     },
