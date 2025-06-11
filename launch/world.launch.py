@@ -68,6 +68,11 @@ def generate_launch_description():
         }.items()
     )
 
+    publish_state_cmd = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(launch_file_dir, 'robot.publisher.py')
+        )
+    )
 
     ld = LaunchDescription()
     ld.add_action(declare_use_simulator_cmd)
@@ -76,5 +81,6 @@ def generate_launch_description():
     ld.add_action(start_gzserver_cmd)
     ld.add_action(spawn_robot_cmd)
     ld.add_action(start_gzclient_cmd)
+    ld.add_action(publish_state_cmd)
 
     return ld
