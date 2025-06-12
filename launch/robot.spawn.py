@@ -47,12 +47,9 @@ def generate_launch_description():
         output='screen',
     )
 
-    ld = LaunchDescription()
-
-    ld.add_action(declare_x_position_cmd)
-    ld.add_action(declare_y_position_cmd)
-    ld.add_action(declare_yaw_position_cmd)
-
-    ld.add_action(start_gazebo_ros_spawner_cmd)
-
-    return ld
+    return LaunchDescription([
+        declare_x_position_cmd,
+        declare_y_position_cmd,
+        declare_yaw_position_cmd,
+        start_gazebo_ros_spawner_cmd
+    ])
