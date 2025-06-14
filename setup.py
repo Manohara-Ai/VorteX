@@ -19,7 +19,12 @@ setup(
         for f in glob('models/**/*', recursive=True)
         if os.path.isfile(f)
     ],
-    install_requires=['setuptools'],
+    install_requires=[
+        'setuptools',
+        'opencv-python',
+        'numpy<=2.0',
+        
+    ],
     zip_safe=True,
     maintainer='manohara',
     maintainer_email='manohara01012005@gmail.com',

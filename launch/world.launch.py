@@ -12,8 +12,8 @@ from launch.substitutions import LaunchConfiguration, PythonExpression
 def generate_launch_description():
     launch_file_dir = os.path.join(get_package_share_directory('vortex'), 'launch')
 
-    x_pose = LaunchConfiguration('x_pose', default='-2')
-    y_pose = LaunchConfiguration('y_pose', default='-15')
+    x_pose = LaunchConfiguration('x_pose', default='-1')
+    y_pose = LaunchConfiguration('y_pose', default='-15.5')
     yaw_pose = LaunchConfiguration('yaw_pose', default='0')
 
     package_dir = get_package_share_directory('vortex')

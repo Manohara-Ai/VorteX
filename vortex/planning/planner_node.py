@@ -11,7 +11,7 @@ class PlannerNode(Node):
 
     def send_velocity_msg(self):
         msg = Twist()
-        msg.linear.x = 2.0  
+        msg.linear.x = 0.5  
         msg.angular.z = 0.0
         self.cmd_vel_pub_.publish(msg)
 
