@@ -1,8 +1,9 @@
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-import math
+from collections import deque
+
+LEFT_HISTORY = deque(maxlen=10)
+RIGHT_HISTORY = deque(maxlen=10)
 
 def region_of_interest(img, vertices):
     mask = np.zeros_like(img)
@@ -26,7 +27,7 @@ def separate_lines(lines, img_shape):
             if x2 == x1:
                 continue  
             slope = (y2 - y1) / (x2 - x1)
-            if abs(slope) < 0.5:
+            if abs(slope) < 0.2:
                 continue
             if slope < 0:
                 left_x += [x1, x2]
@@ -36,6 +37,13 @@ def separate_lines(lines, img_shape):
                 right_y += [y1, y2]
     return left_x, left_y, right_x, right_y
 
+def smooth_line(history, new_line):
+    if new_line is not None:
+        history.append(new_line)
+    if history:
+        return np.mean(history, axis=0).astype(int)
+    return None
+
 def extrapolate_lines(img_shape, left_x, left_y, right_x, right_y):
     min_y = int(img_shape[0] * 3 / 5)
     max_y = img_shape[0]
@@ -44,24 +52,24 @@ def extrapolate_lines(img_shape, left_x, left_y, right_x, right_y):
 
     if left_x and left_y:
         poly_left = np.poly1d(np.polyfit(left_y, left_x, deg=1))
-        lines.append([
-            int(poly_left(max_y)), max_y,
-            int(poly_left(min_y)), min_y
-        ])
+        raw_left = [int(poly_left(max_y)), max_y, int(poly_left(min_y)), min_y]
+        smoothed_left = smooth_line(LEFT_HISTORY, raw_left)
+        if smoothed_left is not None:
+            lines.append(smoothed_left)
 
     if right_x and right_y:
         poly_right = np.poly1d(np.polyfit(right_y, right_x, deg=1))
-        lines.append([
-            int(poly_right(max_y)), max_y,
-            int(poly_right(min_y)), min_y
-        ])
+        raw_right = [int(poly_right(max_y)), max_y, int(poly_right(min_y)), min_y]
+        smoothed_right = smooth_line(RIGHT_HISTORY, raw_right)
+        if smoothed_right is not None:
+            lines.append(smoothed_right)
 
-    return [lines]
+    return [lines] if lines else None
 
 def process_image(image):
     height, width = image.shape[:2]
 
-    top = int(height * 0.6)
+    top = int(height * 0.4)
     bottom = height
     roi_vertices = np.array([[
         (0, bottom),
@@ -70,10 +78,10 @@ def process_image(image):
         (width, bottom)
     ]], dtype=np.int32)
 
-    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    blurred = cv2.GaussianBlur(image, (3, 3), 0)
     edges = cv2.Canny(blurred, 100, 200)
     cropped_edges = region_of_interest(edges, roi_vertices)
+
     lines = cv2.HoughLinesP(
         cropped_edges,
         rho=6,
@@ -91,4 +99,4 @@ def process_image(image):
     else:
         line_image = image
 
-    return cropped_edges, line_image
+    return extrapolated, line_image

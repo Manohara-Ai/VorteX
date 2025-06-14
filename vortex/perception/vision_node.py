@@ -21,7 +21,7 @@ class VisionNode(Node):
     def image_callback(self, msg):
         try:
             frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-            edges, output = process_image(frame)
+            extrapolated, output = process_image(frame) 
 
             cv2.imshow("Lane Detection", output)
             cv2.waitKey(1)
