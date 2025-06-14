@@ -1,9 +1,57 @@
 import cv2
 import numpy as np
-from collections import deque
 
-LEFT_HISTORY = deque(maxlen=10)
-RIGHT_HISTORY = deque(maxlen=10)
+class LaneKalmanFilter:
+    def __init__(self, dt=1.0, process_noise_std=0.1, measurement_noise_std=20.0, initial_estimate_error=100.0):
+        self.dt = dt
+        self.kalman = cv2.KalmanFilter(8, 4)
+
+        self.kalman.transitionMatrix = np.array([
+            [1, 0, 0, 0, dt, 0, 0, 0],
+            [0, 1, 0, 0, 0, dt, 0, 0],
+            [0, 0, 1, 0, 0, 0, dt, 0],
+            [0, 0, 0, 1, 0, 0, 0, dt],
+            [0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1]
+        ], np.float32)
+
+        self.kalman.measurementMatrix = np.array([
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0]
+        ], np.float32)
+
+        self.kalman.processNoiseCov = np.eye(8, dtype=np.float32) * process_noise_std**2
+        self.kalman.measurementNoiseCov = np.eye(4, dtype=np.float32) * measurement_noise_std**2
+        self.kalman.errorCovPost = np.eye(8, dtype=np.float32) * initial_estimate_error**2
+
+        self.initialized = False
+
+    def predict(self):
+        return self.kalman.predict()
+
+    def update(self, measurement):
+        measurement = np.array(measurement, np.float32).reshape(4, 1)
+        self.kalman.correct(measurement)
+
+    def initialize(self, initial_measurement):
+        self.kalman.statePost = np.array([
+            initial_measurement[0],
+            initial_measurement[1],
+            initial_measurement[2],
+            initial_measurement[3],
+            0.0, 0.0, 0.0, 0.0
+        ], np.float32).reshape(8, 1)
+        self.initialized = True
+
+    def get_state(self):
+        return self.kalman.statePost[:4].flatten().astype(int)
+
+LEFT_KF = LaneKalmanFilter(process_noise_std=0.1, measurement_noise_std=20.0)
+RIGHT_KF = LaneKalmanFilter(process_noise_std=0.1, measurement_noise_std=20.0)
 
 def region_of_interest(img, vertices):
     mask = np.zeros_like(img)
@@ -15,7 +63,8 @@ def draw_lines(img, lines, color=[255, 0, 0], thickness=5):
         return img
     line_img = np.zeros_like(img)
     for line in lines:
-        for x1, y1, x2, y2 in line:
+        if len(line) == 4:
+            x1, y1, x2, y2 = line
             cv2.line(line_img, (x1, y1), (x2, y2), color, thickness)
     return cv2.addWeighted(img, 0.8, line_img, 1.0, 0.0)
 
@@ -25,7 +74,7 @@ def separate_lines(lines, img_shape):
     for line in lines:
         for x1, y1, x2, y2 in line:
             if x2 == x1:
-                continue  
+                continue
             slope = (y2 - y1) / (x2 - x1)
             if abs(slope) < 0.2:
                 continue
@@ -37,32 +86,53 @@ def separate_lines(lines, img_shape):
                 right_y += [y1, y2]
     return left_x, left_y, right_x, right_y
 
-def smooth_line(history, new_line):
-    if new_line is not None:
-        history.append(new_line)
-    if history:
-        return np.mean(history, axis=0).astype(int)
-    return None
-
 def extrapolate_lines(img_shape, left_x, left_y, right_x, right_y):
     min_y = int(img_shape[0] * 3 / 5)
     max_y = img_shape[0]
 
     lines = []
 
-    if left_x and left_y:
-        poly_left = np.poly1d(np.polyfit(left_y, left_x, deg=1))
-        raw_left = [int(poly_left(max_y)), max_y, int(poly_left(min_y)), min_y]
-        smoothed_left = smooth_line(LEFT_HISTORY, raw_left)
-        if smoothed_left is not None:
-            lines.append(smoothed_left)
+    if left_x and left_y and len(np.unique(left_y)) >= 2:
+        try:
+            poly_left = np.poly1d(np.polyfit(left_y, left_x, deg=1))
+            raw_left_measurement = [int(poly_left(max_y)), max_y, int(poly_left(min_y)), min_y]
 
-    if right_x and right_y:
-        poly_right = np.poly1d(np.polyfit(right_y, right_x, deg=1))
-        raw_right = [int(poly_right(max_y)), max_y, int(poly_right(min_y)), min_y]
-        smoothed_right = smooth_line(RIGHT_HISTORY, raw_right)
-        if smoothed_right is not None:
-            lines.append(smoothed_right)
+            if not LEFT_KF.initialized:
+                LEFT_KF.initialize(raw_left_measurement)
+            else:
+                LEFT_KF.predict()
+                LEFT_KF.update(raw_left_measurement)
+            lines.append(LEFT_KF.get_state())
+
+        except np.linalg.LinAlgError:
+            if LEFT_KF.initialized:
+                LEFT_KF.predict()
+                lines.append(LEFT_KF.get_state())
+    else:
+        if LEFT_KF.initialized:
+            LEFT_KF.predict()
+            lines.append(LEFT_KF.get_state())
+
+    if right_x and right_y and len(np.unique(right_y)) >= 2:
+        try:
+            poly_right = np.poly1d(np.polyfit(right_y, right_x, deg=1))
+            raw_right_measurement = [int(poly_right(max_y)), max_y, int(poly_right(min_y)), min_y]
+
+            if not RIGHT_KF.initialized:
+                RIGHT_KF.initialize(raw_right_measurement)
+            else:
+                RIGHT_KF.predict()
+                RIGHT_KF.update(raw_right_measurement)
+            lines.append(RIGHT_KF.get_state())
+
+        except np.linalg.LinAlgError:
+            if RIGHT_KF.initialized:
+                RIGHT_KF.predict()
+                lines.append(RIGHT_KF.get_state())
+    else:
+        if RIGHT_KF.initialized:
+            RIGHT_KF.predict()
+            lines.append(RIGHT_KF.get_state())
 
     return [lines] if lines else None
 
@@ -92,10 +162,14 @@ def process_image(image):
         maxLineGap=25
     )
 
-    if lines is not None:
-        left_x, left_y, right_x, right_y = separate_lines(lines, image.shape)
-        extrapolated = extrapolate_lines(image.shape, left_x, left_y, right_x, right_y)
-        line_image = draw_lines(image, extrapolated)
+    extrapolated = None
+    line_image = image
+
+    left_x, left_y, right_x, right_y = separate_lines(lines, image.shape) if lines is not None else ([], [], [], [])
+    extrapolated = extrapolate_lines(image.shape, left_x, left_y, right_x, right_y)
+
+    if extrapolated:
+        line_image = draw_lines(image, extrapolated[0])
     else:
         line_image = image
 
