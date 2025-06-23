@@ -114,9 +114,27 @@ else
 fi
 
 # ------------------------------
-# Step 6: Build Workspace
+# Step 6: Download DepthAnything model
 # ------------------------------
-info "[Step 6] Building VorteX workspace..."
+info "[Step 6] Downloading DepthAnythingV2 model..."
+CHECKPOINT_DIR="./checkpoints"
+CHECKPOINT_PATH="$CHECKPOINT_DIR/depth_anything_v2_vits.pth"
+MODEL_URL="https://huggingface.co/depth-anything/Depth-Anything-V2-Small/resolve/main/depth_anything_v2_vits.pth?download=true"
+
+mkdir -p "$CHECKPOINT_DIR"
+
+if [ ! -f "$CHECKPOINT_PATH" ]; then
+    info "Downloading model..."
+    curl -L "$MODEL_URL" -o "$CHECKPOINT_PATH"
+    success "Model downloaded to $CHECKPOINT_PATH."
+else
+    success "Model already exists. Skipping download."
+fi
+
+# ------------------------------
+# Step 7: Build Workspace
+# ------------------------------
+info "[Step 7] Building VorteX workspace..."
 cd ~/ros2_ws
 if ! colcon list | grep -q vortex; then
     error "VorteX package not found in workspace. Build skipped."
@@ -136,4 +154,3 @@ echo " To launch the simulation, run:"
 echo "     ros2 launch vortex world.launch.py"
 echo "----------------------------------------------"
 echo -e "${NC}"
-
