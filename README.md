@@ -1,173 +1,161 @@
-# Vortex Gazebo Simulation with TurtleBot3
+# VorteX Gazebo Simulation with TurtleBot3
 
-This package sets up a custom Gazebo world and spawns a TurtleBot3 robot model for simulation using ROS 2 (Humble).
-
----
-
-## Prerequisites
-
-Ensure the following are installed:
-* ROS 2 Humble
-* Gazebo (compatible with Humble)
-* `turtlebot3_gazebo` and `gazebo_ros` packages
-* NVIDIA GPU (for GPU-accelerated simulation—optional)
+This ROS 2 (Humble) package sets up a TurtleBot3 robot in a custom Gazebo world for simulation. It includes automatic setup, camera field-of-view modifications, and GPU detection to streamline the simulation experience.
 
 ---
 
-## Environment Setup
+## Quick Setup
 
-Before building and running the simulation, export these environment variables and source the necessary setup files:
+1. Clone this repository into your ROS 2 workspace:
 
 ```bash
-# 1. Set your TurtleBot3 model
-export TURTLEBOT3_MODEL=waffle
+cd ~/ros2_ws/src
+git clone https://github.com/Manohara-Ai/VorteX.git vortex
+````
 
-# 2. Source ROS 2 setup
-source /opt/ros/humble/setup.bash
+2. Run the one-step setup script:
 
-# 3. Enable colcon tab completion (optional)
-source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash
+```bash
+cd ~/ros2_ws/src/vortex
+chmod +x setup.sh
+./setup.sh
+```
 
-# 4. Source your workspace
-source ~/ros2_ws/install/setup.bash
+> The script installs dependencies, patches camera settings, detects GPU, and builds the workspace.
 
-# 5. Export custom model and world paths for Gazebo
-export GAZEBO_MODEL_PATH=$(ros2 pkg prefix vortex)/share/vortex/models:$(ros2 pkg prefix vortex)/share/vortex/worlds
+> ✅ Tested on Ubuntu 22.04 + ROS 2 Humble.
+
+---
+
+## Directory Structure
+
+```
+vortex/
+├── launch/            # Launch files for Gazebo, RViz, etc.
+├── models/            # Custom Gazebo models
+├── worlds/            # Custom simulation world(s)
+├── rviz/              # RViz configuration files
+├── test/              # Test assets (if applicable)
+├── vortex/            # (Optional) Python package or scripts
+├── setup.sh           # One-step setup script
+├── package.xml        # ROS 2 package metadata
+├── setup.py / cfg     # Python packaging (if used)
+├── LICENSE            # MIT License
+└── README.md          # You're here!
 ```
 
 ---
 
-## World Information
+## Features
 
-This simulation utilizes a custom Gazebo world. The world is based on the **AWS RoboMaker Racetrack World**, which can be found on their GitHub repository: [https://github.com/aws-robotics/aws-robomaker-racetrack-world](https://github.com/aws-robotics/aws-robomaker-racetrack-world).
-
----
-
-## Modifying the Camera's Horizontal Field of View (FoV)
-
-To widen the field of view of your TurtleBot3's camera in the simulation, you'll need to adjust the `horizontal_fov` parameter within the robot's URDF (Unified Robot Description Format) or XACRO (XML Macros for ROS) file. This value is typically given in **radians**.
-
-### Steps
-
-1.  **Locate the TurtleBot3 Model Definition:**
-    The camera definition for the TurtleBot3 is usually found within the `turtlebot3_description` package. You'll need to pinpoint the specific XACRO file that defines the camera sensor. Common locations include:
-    * `/opt/ros/humble/share/turtlebot3_description/urdf/turtlebot3_waffle.urdf.xacro` (or `turtlebot3_burger.urdf.xacro` if you're using the Burger model).
-    * Alternatively, if your `vortex` package has its own custom TurtleBot3 definition, check there. You can often find the exact path by inspecting the `launch` file that spawns the TurtleBot3 in your simulation.
-
-2.  **Edit the `horizontal_fov` Parameter:**
-    Open the relevant XACRO file using a text editor (e.g., `gedit`, `nano`, `VS Code`). Search for the `<sensor>` tag related to the camera. Inside this tag, you'll find a `<camera>` block, and within that, a `<horizontal_fov>` tag.
-
-    Change the value within the `<horizontal_fov>` tag from its current value (e.g., `1.02974` radians, which is approximately 59 degrees) to `2.61799` radians (approximately 150 degrees).
-
-    **Example Snippet (what you're looking for and how to change it):**
-
-    ```xml
-    <sensor name="camera" type="camera">
-        <camera>
-            <horizontal_fov>1.02974</horizontal_fov>
-            </camera>
-        </sensor>
-
-    <sensor name="camera" type="camera">
-        <camera>
-            <horizontal_fov>2.61799</horizontal_fov>
-            </camera>
-        </sensor>
-    ```
-
-    **Important Considerations:**
-
-    * **Backup:** Always make a **backup of the original file** before making any changes.
-    * **Permissions:** If you've installed ROS 2 via `apt`, the files in `/opt/ros/humble/` are typically read-only. You might need to **copy the relevant `turtlebot3_description` package to your workspace**, modify it there, and ensure your `GAZEBO_MODEL_PATH` (or other ROS package paths) points to your modified version first. A common and recommended approach is to **overlay the package in your `ros2_ws/src` directory**. This means copying the entire `turtlebot3_description` folder into `~/ros2_ws/src/` and then making your edits.
-
-3.  **Rebuild your Workspace (if necessary):**
-    If you copied and modified the `turtlebot3_description` package in your workspace, you **must rebuild your workspace** for the changes to take effect:
-
-    ```bash
-    cd ~/ros2_ws
-    colcon build --packages-select turtlebot3_description # Or the name of your modified package
-    source install/setup.bash
-    ```
+* One-line setup via `setup.sh`
+* Custom world based on AWS RoboMaker Racetrack
+* Automatically expands TurtleBot3 camera FoV to 150°
+* Detects NVIDIA GPU and configures Gazebo accordingly
+* ROS 2 Humble-compatible
 
 ---
 
-## Running the Simulation without GPU Acceleration
+## Requirements (Auto-installed)
 
-Gazebo often tries to use GPU acceleration for better performance. However, if you don't have an NVIDIA GPU, or if you encounter issues with GPU acceleration, you can disable it.
+* ROS 2 Humble
+* `turtlebot3_gazebo`, `gazebo_ros`, and `teleop-twist-keyboard`
+* Gazebo Classic (compatible with ROS 2)
+* Optional: NVIDIA GPU (used if available)
 
-The method for disabling GPU acceleration depends on how Gazebo is launched. This is typically controlled by environment variables or specific arguments passed to the Gazebo executable.
+---
 
-### Method 1: Using `GAZEBO_ARGS` Environment Variable (Recommended for this package)
+## Running the Simulation
 
-Your `vortex` package likely uses a `launch` file to start Gazebo. This launch file might pass arguments to Gazebo or rely on environment variables. You can often disable GPU acceleration by setting the `GAZEBO_ARGS` environment variable **before** launching your simulation.
+After setup is complete:
 
-To disable GPU acceleration, set `GAZEBO_ARGS` to include `--disable-gpu`:
+```bash
+# Source ROS 2 and your workspace
+source ~/.bashrc
+
+# Launch the Gazebo simulation
+ros2 launch vortex world.launch.py
+
+# Optional: RViz
+ros2 launch vortex rviz.launch.py
+
+# Optional: Autonomous behavior
+ros2 launch vortex vortex.launch.py
+```
+
+---
+
+## Camera Field of View
+
+The `setup.sh` script modifies TurtleBot3’s camera `horizontal_fov` to `2.61799` radians (\~150°) in:
+
+* `model.sdf`
+* `model-1_4.sdf`
+
+Path:
+
+```
+/opt/ros/humble/share/turtlebot3_gazebo/models/turtlebot3_waffle/
+```
+
+If already set, the script will skip modification.
+
+---
+
+## No GPU? No Problem.
+
+If no NVIDIA GPU is found:
+
+* GPU offload in the launch file is automatically disabled.
+
+If you want to **force-disable** GPU manually:
 
 ```bash
 export GAZEBO_ARGS="--disable-gpu"
-# Then proceed to launch your simulation as usual, for example:
-# ros2 launch vortex vortex_simulation.launch.py
 ```
 
-When Gazebo starts, it checks the `GAZEBO_ARGS` environment variable for additional command-line arguments. By setting `--disable-gpu` here, you're instructing Gazebo to avoid using the GPU for rendering and physics, forcing it to use CPU-based alternatives.
+---
 
-### Method 2: Modifying the Launch File (If Method 1 doesn't work)
+## Rebuilding the Workspace
 
-If setting `GAZEBO_ARGS` doesn't disable GPU acceleration, the launch file in your `vortex` package might be explicitly overriding it or not passing `GAZEBO_ARGS` correctly. In this case, you would need to modify the launch file itself.
+After any changes:
 
-1.  **Locate the Launch File:**
-    Find the launch file responsible for starting Gazebo in your `vortex` package. It's typically located in `vortex/launch/` and might be named something like `vortex_simulation.launch.py` or similar.
+```bash
+cd ~/ros2_ws
+colcon build --packages-select vortex
+source install/setup.bash
+```
 
-2.  **Modify the Gazebo Node:**
-    Open the launch file and locate the `Node` definition for Gazebo. You'll need to add an argument to disable GPU. The exact parameter might vary slightly depending on the Gazebo version and how the launch file is structured. Look for a section where arguments are passed to the `gzserver` (Gazebo server) or `gzclient` (Gazebo client) executables.
+---
 
-    **Example of a potential modification in a Python launch file:**
+## Acknowledgements
 
-    ```python
-    from launch import LaunchDescription
-    from launch_ros.actions import Node
-    from launch.actions import ExecuteProcess
-    import os
+* AWS RoboMaker Racetrack World: [github.com/aws-robotics/aws-robomaker-racetrack-world](https://github.com/aws-robotics/aws-robomaker-racetrack-world)
+* TurtleBot3 Simulation by ROBOTIS
 
-    def generate_launch_description():
-        gazebo_ros_package = 'gazebo_ros'
-        gazebo_client = 'gzclient'
-        gazebo_server = 'gzserver'
+---
 
-        # ... other launch configurations
+## Collaboration & Contributions
 
-        # Original Gazebo server launch might look something like this:
-        # start_gazebo_server = ExecuteProcess(
-        #     cmd=['ros2', 'run', gazebo_ros_package, gazebo_server, '-s', 'libgazebo_ros_factory.so', world_path],
-        #     output='screen'
-        # )
+We are open to collaborations and improvements!
 
-        # Modified Gazebo server launch to disable GPU:
-        start_gazebo_server = ExecuteProcess(
-            cmd=['ros2', 'run', gazebo_ros_package, gazebo_server, '--disable-gpu', '-s', 'libgazebo_ros_factory.so', world_path],
-            output='screen'
-        )
+If you'd like to contribute:
 
-        # Original Gazebo client launch (might need similar modification):
-        # start_gazebo_client = ExecuteProcess(
-        #     cmd=['ros2', 'run', gazebo_ros_package, gazebo_client],
-        #     output='screen'
-        # )
+1. Fork this repository
+2. Create a new branch (`git checkout -b your-feature-name`)
+3. Make your changes
+4. Submit a pull request (PR)
 
-        # Modified Gazebo client launch to disable GPU (if applicable):
-        start_gazebo_client = ExecuteProcess(
-            cmd=['ros2', 'run', gazebo_ros_package, gazebo_client, '--disable-gpu'],
-            output='screen'
-        )
+We welcome:
+- New launch configurations
+- Improved robot behavior or navigation logic
+- Additional worlds or test cases
+- Performance or compatibility fixes
 
-        return LaunchDescription([
-            # ... other nodes
-            start_gazebo_server,
-            start_gazebo_client, # If client is launched separately
-            # ...
-        ])
-    ```
+Your contributions are greatly appreciated! 
 
-    **Note:** The exact `cmd` and arguments might differ. The key is to find where `gzserver` and/or `gzclient` are called and insert `--disable-gpu` into their arguments list.
+---
 
-By following these steps, you can customize the camera's field of view for a wider perspective and ensure your Gazebo simulation runs smoothly even without a dedicated NVIDIA GPU.
+## License
+
+This project is licensed under the [MIT License](./LICENSE).
