@@ -3,7 +3,9 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import cv2
+import numpy as np
 from .edge_detectors import process_image
+from .depth_map import get_depth_map
 
 class VisionNode(Node):
     def __init__(self):
@@ -22,8 +24,12 @@ class VisionNode(Node):
         try:
             frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
             extrapolated, output = process_image(frame) 
+            depth_map = get_depth_map(frame)
 
             cv2.imshow("Lane Detection", output)
+            depth_vis = (depth_map - depth_map.min()) / (depth_map.max() - depth_map.min())
+            depth_color = cv2.applyColorMap((depth_vis * 255).astype(np.uint8), cv2.COLORMAP_INFERNO)
+            cv2.imshow("Depth Map", depth_color)
             cv2.waitKey(1)
 
         except Exception as e:

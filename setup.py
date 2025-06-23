@@ -7,13 +7,14 @@ package_name = 'vortex'
 setup(
     name=package_name,
     version='0.0.0',
-    packages=find_packages(include=['vortex', 'vortex.*']),
+    packages=find_packages(include=['vortex', 'vortex.*', 'depth_anything_v2', 'depth_anything_v2.*']),
     data_files=[
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', glob('launch/*.py')),
         ('share/' + package_name + '/rviz', glob('rviz/*.rviz')),
         ('share/' + package_name + '/worlds', glob('worlds/*.world')),
+        ('share/' + package_name + '/checkpoints', glob('checkpoints/*.pth')),
     ] + [
         (os.path.join('share', package_name, os.path.dirname(f)), [f])
         for f in glob('models/**/*', recursive=True)
@@ -21,6 +22,7 @@ setup(
     ],
     install_requires=[
         'setuptools',
+        'torch',
         'opencv-python',
         'numpy<=2.0',
         
