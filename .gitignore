@@ -1,0 +1,52 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.log
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+
+# === ROS 2 ===
+build/
+install/
+log/
+.colcon/
+.colcon_install_layout
+*.launch.pyc
+*.rviz.pyc
+
+# === Catkin/ament tools (just in case) ===
+devel/
+.cmake/
+
+# === PyTorch / Models ===
+checkpoints/
+*.pth
+*.pt
+*.onnx
+*.pb
+*.tflite
+
+# === Jupyter / VSCode / IDEs ===
+.ipynb_checkpoints/
+.vscode/
+.idea/
+
+# === Misc ===
+*.DS_Store
+*.swp
+*.bak
+*.tmp
+*.~ 
