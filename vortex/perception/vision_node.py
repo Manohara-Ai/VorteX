@@ -11,26 +11,53 @@ class VisionNode(Node):
     def __init__(self):
         super().__init__("vision_node")
         self.get_logger().info("Vision node has started perception")
+
         self.bridge = CvBridge()
+
+        # Subscriber to raw camera feed
         self.subscription = self.create_subscription(
             Image,
             '/camera/image_raw',
             self.image_callback,
             10
         )
-        self.subscription
+
+        # Publishers for output images
+        self.lane_pub = self.create_publisher(Image, '/vision/lane', 10)
+        self.depth_pub = self.create_publisher(Image, '/vision/depth', 10)
+        self.depth_raw_pub = self.create_publisher(Image, '/vision/depth_raw', 10)  # Optional: raw float32 depth
 
     def image_callback(self, msg):
         try:
+            # Convert image from ROS to OpenCV
             frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-            extrapolated, output = process_image(frame) 
+
+            # Lane Detection
+            extrapolated, output = process_image(frame)
+            lane_msg = self.bridge.cv2_to_imgmsg(output, encoding='bgr8')
+            lane_msg.header = msg.header  # Maintain timestamp and frame_id
+            self.lane_pub.publish(lane_msg)
+
+            # Depth Map Generation
             depth_map = get_depth_map(frame)
 
-            cv2.imshow("Lane Detection", output)
-            depth_vis = (depth_map - depth_map.min()) / (depth_map.max() - depth_map.min())
-            depth_color = cv2.applyColorMap((depth_vis * 255).astype(np.uint8), cv2.COLORMAP_INFERNO)
-            cv2.imshow("Depth Map", depth_color)
-            cv2.waitKey(1)
+            if depth_map is None or not np.isfinite(depth_map).any():
+                self.get_logger().warn("Depth map is empty or contains invalid values.")
+                return
+
+            # Publish raw depth as mono16/float32 image (optional, for real depth use)
+            depth_raw = depth_map.astype(np.float32)
+            depth_raw_msg = self.bridge.cv2_to_imgmsg(depth_raw, encoding='32FC1')
+            depth_raw_msg.header = msg.header
+            self.depth_raw_pub.publish(depth_raw_msg)
+
+            # Normalized colored depth for visualization
+            vis = (depth_raw - depth_raw.min()) / (depth_raw.max() - depth_raw.min() + 1e-8)
+            vis_color = cv2.applyColorMap((vis * 255).astype(np.uint8), cv2.COLORMAP_INFERNO)
+
+            depth_vis_msg = self.bridge.cv2_to_imgmsg(vis_color, encoding='bgr8')
+            depth_vis_msg.header = msg.header
+            self.depth_pub.publish(depth_vis_msg)
 
         except Exception as e:
             self.get_logger().error(f"Failed to process image: {e}")
