@@ -1,8 +1,10 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
+from std_msgs.msg import String
 from cv_bridge import CvBridge
 import cv2
+import json 
 import numpy as np
 from .edge_detectors import process_image
 from .depth_map import get_depth_map
@@ -26,6 +28,7 @@ class VisionNode(Node):
         self.lane_pub = self.create_publisher(Image, '/vision/lane', 10)
         self.depth_pub = self.create_publisher(Image, '/vision/depth', 10)
         self.depth_raw_pub = self.create_publisher(Image, '/vision/depth_raw', 10)  # Optional: raw float32 depth
+        self.lane_coords_pub = self.create_publisher(String, '/vision/lane_coords', 10)
 
     def image_callback(self, msg):
         try:
@@ -37,6 +40,15 @@ class VisionNode(Node):
             lane_msg = self.bridge.cv2_to_imgmsg(output, encoding='bgr8')
             lane_msg.header = msg.header  # Maintain timestamp and frame_id
             self.lane_pub.publish(lane_msg)
+
+            # Publish extrapolated lane coordinates (if available)
+            if extrapolated and isinstance(extrapolated[0], list):
+                line_coords = extrapolated[0]  # List of [x1, y1, x2, y2]
+                serializable_coords = [list(map(int, line)) for line in line_coords]
+
+                lane_str_msg = String()  # 🛠 Renamed to avoid conflict
+                lane_str_msg.data = json.dumps(serializable_coords)
+                self.lane_coords_pub.publish(lane_str_msg)
 
             # Depth Map Generation
             depth_map = get_depth_map(frame)
